@@ -1,13 +1,18 @@
+from dotenv import load_dotenv
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
-import ollama
 import logging
 from .exceptions import ModelError, VectorStoreError, DocumentError
 import httpx
 import json
+import os  # Import os to access environment variables
+import requests
 
 logger = logging.getLogger(__name__)
+
+
+load_dotenv()
 
 
 @dataclass
@@ -59,8 +64,8 @@ class OllamaEmbedding(EmbeddingModel):
             raise ModelError(f"Failed to generate embeddings: {str(e)}") from e
 
 
-class OllamaLLM(LLMModel):
-    """Ollama-based language model implementation with Sheldon's personality."""
+class AwanLLM(LLMModel):
+    """Awan-based language model implementation with Sheldon's personality."""
 
     SHELDON_SYSTEM_PROMPT = """You are now embodying Dr. Sheldon Cooper, a theoretical physicist with an IQ of 187, 
     answering questions based on the provided context documents. Your task is to:
@@ -81,67 +86,82 @@ class OllamaLLM(LLMModel):
     Remember: You are a RAG system - your primary source of information should be the provided context, 
     not your general knowledge."""
 
-    def __init__(self, model_name: str = "deepseek-r1"):
+    def __init__(self, model_name: str = "Meta-Llama-3-8B-Instruct"):
         self.model_name = model_name
-        logger.info(f"Initialized OllamaLLM with model: {model_name}")
+        self.api_key = os.getenv("AWANLLM_API_KEY")
+        logger.info(f"Initialized AwanLLM with model: {model_name}")
 
     async def generate(self, prompt: str, context: Optional[str] = None) -> str:
-        """Generate text using Ollama with Sheldon's personality."""
+        """Generate text using Awan LLM with Sheldon's personality."""
         try:
-            # Construct a prompt that emphasizes using the context
-            full_prompt = (
-                f"System: {self.SHELDON_SYSTEM_PROMPT}\n\n"
-                f"Context Documents:\n{context if context else 'No context provided.'}\n\n"
-                f"Instructions: Based primarily on the above context documents, answer the following question "
-                f"while maintaining Dr. Sheldon Cooper's personality.\n\n"
-                f"Question: {prompt}\n\n"
-                f"Dr. Sheldon Cooper's Response:"
+            logger.debug("Generating response for prompt: %s", prompt)
+            # Construct the full prompt
+            full_prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{self.SHELDON_SYSTEM_PROMPT}\n\n <|start_header_id|>user<|end_header_id|>\n\n {context if context else 'No context provided.'}\n\n <|start_header_id|>assistant<|end_header_id|>\n\n {prompt}\n\n"""
+
+            logger.info("Full prompt: %s", full_prompt)
+
+            # Prepare the payload
+            payload = json.dumps(
+                {
+                    "model": self.model_name,
+                    "prompt": full_prompt,
+                    "repetition_penalty": 1.1,
+                    "temperature": 0.7,
+                    "top_p": 0.9,
+                    "top_k": 40,
+                    "max_tokens": 1024,
+                    "stream": True,
+                }
+            )
+            logger.debug("Sending request to Awan LLM API with payload: %s", payload)
+
+            # Set up headers
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
+            }
+            logger.debug("Sending request to Awan LLM API with headers: %s", headers)
+
+            # Make the request to Awan LLM API
+            response = requests.post(
+                "https://api.awanllm.com/v1/completions",
+                headers=headers,
+                data=payload,
+                stream=True,
             )
 
-            timeout = httpx.Timeout(60.0, connect=5.0)
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await client.post(
-                    "http://localhost:11434/api/generate",
-                    json={
-                        "model": self.model_name,
-                        "prompt": full_prompt,
-                    },
-                    headers={"Accept": "application/x-ndjson"},
+            logger.info(
+                "Received response with status code: %d | %s",
+                response.status_code,
+                response.text,
+            )
+
+            if response.status_code != 200:
+                error_text = response.text
+                logger.error("API request failed: %s", error_text)
+                raise ModelError(
+                    f"API request failed with status {response.status_code}. "
+                    f"Error: {error_text}"
                 )
 
-                if response.status_code != 200:
-                    error_text = response.text
-                    raise ModelError(
-                        f"API request failed with status {response.status_code}. "
-                        f"Error: {error_text}"
-                    )
+            # Handle streaming response
+            full_response = ""
+            for line in response.iter_lines():
+                if line:
+                    chunk = json.loads(line)
+                    if "response" in chunk:
+                        full_response += chunk["response"]
 
-                # Handle streaming response
-                full_response = ""
-                for line in response.text.splitlines():
-                    if not line:
-                        continue
-                    try:
-                        chunk = json.loads(line)
-                        if "response" in chunk:
-                            full_response += chunk["response"]
-                    except json.JSONDecodeError as e:
-                        logger.debug(f"Failed to parse chunk: {e}")
-                        continue
+            if not full_response:
+                logger.warning("No response received from model")
+                raise ModelError("No response received from model")
 
-                if not full_response:
-                    raise ModelError("No response received from model")
+            logger.debug("Generated response: %s", full_response)
+            return full_response
 
-                return full_response
-
-        except (httpx.ReadTimeout, httpx.ConnectTimeout):
-            error_msg = "Request timed out while waiting for response from Ollama. Please ensure Ollama is running and the model is properly loaded."
-            logger.error(error_msg)
-            raise ModelError(error_msg)
         except Exception as e:
-            error_msg = f"Error generating response: {str(e)}"
-            logger.error(error_msg)
-            raise ModelError(error_msg) from e
+            logger.error("Error generating response: %s", str(e))
+            raise ModelError(f"Failed to generate response: {str(e)}") from e
 
 
 class VectorStore(ABC):

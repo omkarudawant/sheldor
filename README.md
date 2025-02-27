@@ -8,7 +8,7 @@ precise, scientifically accurate responses with a touch of Sheldon's unique pers
 ## Features
 
 - **Sheldon Cooper's Personality**: Responses embody Sheldon's characteristic traits and communication style
-- **Local LLM Integration**: Uses Ollama for running LLMs locally
+- **Local LLM Integration**: Uses Awan LLM for chat completion
 - **PDF Document Processing**: Support for uploading and processing PDF documents
 - **Streamlit UI**: Clean and intuitive chat interface
 - **Modular Architecture**: Easy to extend and modify components
@@ -25,6 +25,10 @@ As Sheldon would say, "Proper preparation prevents poor performance."
 2. Pull the DeepSeek model:
 ```bash
 ollama pull deepseek-r1
+```
+3. Obtain an API key from Awan LLM and set it as an environment variable:
+```bash
+export AWANLLM_API_KEY='your_api_key_here'
 ```
 
 ## Installation
@@ -97,12 +101,13 @@ mypy sheldor/
 ## Configuration
 
 The system can be configured through environment variables:
-- `SHELDOR_DEFAULT_LLM_MODEL`: Default LLM model (default: "deepseek-r1")
+- `SHELDOR_DEFAULT_LLM_MODEL`: Default LLM model (default: "Meta-Llama-3-8B-Instruct")
 - `SHELDOR_DEFAULT_EMBEDDING_MODEL`: Default embedding model (default: "deepseek-r1")
 - `SHELDOR_LOG_LEVEL`: Logging level (default: "INFO")
 - `SHELDOR_SARCASM_DETECTION`: Enable sarcasm detection (default: False)
 - `SHELDOR_VERBOSITY`: Control explanation detail level (default: 3)
 - `SHELDOR_SCIENTIFIC_REFERENCES`: Include scientific paper references (default: True)
+- `AWANLLM_API_KEY`: API key for Awan LLM service
 
 ## Contributing
 
@@ -118,8 +123,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- [Ollama](https://ollama.ai/) for local LLM support
+- [Awan LLM](https://awanllm.com/) for chat completion support
 - [Streamlit](https://streamlit.io/) for the UI framework
 - [PyMuPDF](https://pymupdf.readthedocs.io/) for PDF processing
 
 ---
+```
+
+

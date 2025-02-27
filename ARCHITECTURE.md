@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sheldor is a Retrieval Augmented Generation (RAG) system built with a layered architecture pattern. It combines local LLM capabilities through Ollama with a personality-driven interface inspired by Dr. Sheldon Cooper.
+Sheldor is a Retrieval Augmented Generation (RAG) system built with a layered architecture pattern. It combines local LLM capabilities through Awan LLM with a personality-driven interface inspired by Dr. Sheldon Cooper.
 
 ## System Architecture
 
@@ -41,7 +41,7 @@ sheldor/
 
 - **Concrete Implementations**:
   - `OllamaEmbedding`: Generates embeddings using Ollama
-  - `OllamaLLM`: Handles text generation with Sheldon's personality
+  - `AwanLLM`: Handles text generation with Sheldon's personality using Awan LLM
   - `InMemoryVectorStore`: Manages document storage and similarity search
 
 #### 2.3 Service Layer
@@ -81,7 +81,7 @@ graph TD
     B --> C[Search Vector Store]
     C --> D[Retrieve Relevant Docs]
     D --> E[Combine Context]
-    E --> F[Generate Response]
+    E --> F[Generate Response using Awan LLM]
     F --> G[Display Response]
 ```
 
@@ -104,16 +104,12 @@ class InMemoryVectorStore:
 
 #### 4.2 LLM Integration
 ```python
-class OllamaLLM:
+class AwanLLM:
     async def generate(self, prompt: str, context: Optional[str] = None) -> str:
         # Combines system prompt, context, and user query
         full_prompt = self._construct_prompt(prompt, context)
-        response = await ollama.generate(
-            model=self.model_name,
-            prompt=full_prompt,
-            system=self.SHELDON_SYSTEM_PROMPT
-        )
-        return response['response']
+        response = await self._make_request_to_awan_llm(full_prompt)
+        return response
 ```
 
 ### 5. Async Operation Handling
@@ -162,9 +158,10 @@ System configuration is managed through:
 Example configuration:
 ```python
 class Settings(BaseSettings):
-    DEFAULT_LLM_MODEL: str = "deepseek-r1"
-    SHELDON_VERBOSITY: int = 3
+    DEFAULT_LLM_MODEL: str = "Meta-Llama-3-8B-Instruct"
+    DEFAULT_EMBEDDING_MODEL: str = "deepseek-r1"
     LOG_LEVEL: str = "INFO"
+    AWANLLM_API_KEY: str  # API key for Awan LLM service
 ```
 
 ### 8. Testing Strategy
@@ -179,7 +176,7 @@ Example test:
 @pytest.mark.asyncio
 async def test_personality_traits(rag_system):
     response = await rag_system.query("What is quantum mechanics?")
-    assert any([
+    assert any([ 
         "theoretical physicist" in response,
         "physics" in response.lower(),
         "scientific" in response.lower()
@@ -228,8 +225,9 @@ pip install -r requirements.txt
 
 2. Configuration:
 ```bash
-export SHELDOR_DEFAULT_LLM_MODEL=deepseek-r1
+export SHELDOR_DEFAULT_LLM_MODEL=Meta-Llama-3-8B-Instruct
 export SHELDOR_LOG_LEVEL=INFO
+export AWANLLM_API_KEY='your_api_key_here'
 ```
 
 3. Run Application:
@@ -254,5 +252,3 @@ The system uses a hierarchical logging system:
 5. Caching layer for improved performance
 
 ---
-
-For more detailed information about specific components, please refer to the inline documentation in each module. 

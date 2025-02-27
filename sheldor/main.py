@@ -1,16 +1,15 @@
-from typing import List, Optional
+from typing import Optional
 from .models import (
     Document,
     EmbeddingModel,
     LLMModel,
     VectorStore,
     OllamaEmbedding,
-    OllamaLLM,
+    AwanLLM,
     InMemoryVectorStore,
 )
 import logging
-from .exceptions import SheldorError, ModelError, VectorStoreError
-from .logging_config import setup_logging
+from .exceptions import SheldorError
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ class Sheldor:
     ):
         """Initialize Sheldor with its components."""
         self.embedding_model = embedding_model or OllamaEmbedding()
-        self.llm_model = llm_model or OllamaLLM()
+        self.llm_model = llm_model or AwanLLM()
         self.vector_store = vector_store or InMemoryVectorStore()
         logger.info("Initialized Sheldor RAG system")
 
@@ -34,7 +33,11 @@ class Sheldor:
         """Add a document to the RAG system."""
         try:
             embedding = await self.embedding_model.embed(content)
-            document = Document(content=content, metadata=metadata, embedding=embedding)
+            document = Document(
+                content=content,
+                metadata=metadata,
+                embedding=embedding,
+            )
             await self.vector_store.add_document(document)
             logger.info(f"Successfully added document with metadata: {metadata}")
         except Exception as e:
@@ -74,7 +77,10 @@ class Sheldor:
                 full_context = context
 
             # Generate response
-            response = await self.llm_model.generate(question, context=full_context)
+            response = await self.llm_model.generate(
+                question,
+                context=full_context,
+            )
 
             return response
 
@@ -84,13 +90,16 @@ class Sheldor:
 
 
 async def create_rag_system(
-    embedding_model_name: str = "llama2", llm_model_name: str = "llama2"
+    embedding_model_name: str = "llama2",
+    llm_model_name: str = "Meta-Llama-3-8B-Instruct",
 ) -> Sheldor:
     """Factory function to create a new Sheldor instance."""
     embedding_model = OllamaEmbedding(model_name=embedding_model_name)
-    llm_model = OllamaLLM(model_name=llm_model_name)
+    llm_model = AwanLLM(model_name=llm_model_name)
     vector_store = InMemoryVectorStore()
 
     return Sheldor(
-        embedding_model=embedding_model, llm_model=llm_model, vector_store=vector_store
+        embedding_model=embedding_model,
+        llm_model=llm_model,
+        vector_store=vector_store,
     )

@@ -32,7 +32,8 @@ class StreamlitUI:
             asyncio.set_event_loop(loop)
             st.session_state.rag_system = loop.run_until_complete(
                 create_rag_system(
-                    embedding_model_name="deepseek-r1", llm_model_name="deepseek-r1"
+                    embedding_model_name="deepseek-r1",
+                    llm_model_name="Meta-Llama-3-8B-Instruct",
                 )
             )
 
