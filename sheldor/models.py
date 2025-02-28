@@ -130,7 +130,9 @@ class AwanLLM(LLMModel):
             )
 
             # Log the raw response text
-            logger.debug("Raw response from Awan LLM API: %s", response.text)
+            logger.debug(
+                "HTTP Statue code response from Awan LLM API: %s", response.status_code
+            )
 
             if response.status_code != 200:
                 error_text = response.text
