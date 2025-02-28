@@ -28,16 +28,17 @@ class StreamlitUI:
 
         if "rag_system" not in st.session_state:
             # Initialize the RAG system properly
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            st.session_state.rag_system = loop.run_until_complete(
-                create_rag_system(
-                    embedding_model_name="deepseek-r1",
-                    llm_model_name="Meta-Llama-3-8B-Instruct",
-                )
-            )
+            st.session_state.rag_system = None  # Set to None initially
+            asyncio.create_task(self.create_rag_system())  # Schedule the task
 
-    def process_uploaded_file(self, uploaded_file) -> None:
+    async def create_rag_system(self):
+        """Create the RAG system asynchronously."""
+        st.session_state.rag_system = await create_rag_system(
+            embedding_model_name="mxbai-embed-large",
+            llm_model_name="Meta-Llama-3-8B-Instruct",
+        )
+
+    async def process_uploaded_file(self, uploaded_file) -> None:
         """Process the uploaded PDF file."""
         try:
             with st.spinner(
@@ -50,32 +51,28 @@ class StreamlitUI:
                     tmp_file.write(uploaded_file.getvalue())
                     tmp_path = Path(tmp_file.name)
 
-                    try:
-                        # Process PDF synchronously
-                        pdf_document = fitz.open(tmp_path)
-                        for page_num in range(len(pdf_document)):
-                            page = pdf_document[page_num]
-                            text = page.get_text()
-                            if text.strip():
-                                # Run async operation in sync context
-                                loop = asyncio.new_event_loop()
-                                asyncio.set_event_loop(loop)
-                                loop.run_until_complete(
-                                    st.session_state.rag_system.add_document(
-                                        content=text,
-                                        metadata={
-                                            "source": uploaded_file.name,
-                                            "page": page_num + 1,
-                                            "type": "pdf",
-                                        },
-                                    )
-                                )
+                # Process PDF synchronously
+                pdf_document = fitz.open(tmp_path)
+                try:
+                    for page_num in range(len(pdf_document)):
+                        page = pdf_document[page_num]
+                        text = page.get_text()
+                        if text.strip():
+                            # Schedule the add_document method to run asynchronously
+                            await st.session_state.rag_system.add_document(
+                                content=text,
+                                metadata={
+                                    "source": uploaded_file.name,
+                                    "page": page_num + 1,
+                                    "chunk": f"chunk_{page_num + 1}",
+                                    "type": "pdf",
+                                },
+                            )
+                finally:
+                    pdf_document.close()  # Ensure the PDF document is closed
+                    print("PDF document closed.")
 
-                        pdf_document.close()
-                        st.success(f"Successfully processed {uploaded_file.name}!")
-                    finally:
-                        # Clean up temp file
-                        tmp_path.unlink()
+                st.success(f"Successfully processed {uploaded_file.name}!")
         except Exception as e:
             logger.error(f"Error processing file: {str(e)}")
             st.error(str(e))
@@ -89,16 +86,14 @@ class StreamlitUI:
             logger.error(f"Error processing query: {str(e)}")
             raise
 
-    def process_query(self, query: str) -> None:
+    async def process_query(self, query: str) -> None:
         """Process user query and update chat history."""
         try:
             with st.spinner(
                 "Processing with the precision of a theoretical physicist..."
             ):
-                # Run async operation in sync context
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                response = loop.run_until_complete(self._process_query(query))
+                # Directly await the async function
+                response = await self._process_query(query)
 
                 # Add messages to session state
                 st.session_state.messages.append({"role": "user", "content": query})
@@ -162,7 +157,7 @@ class StreamlitUI:
                 # Regular message without thinking section
                 st.markdown(content)
 
-    def render(self):
+    async def render(self):
         """Render the Streamlit UI."""
         st.title("Sheldor - The Sheldon Cooper RAG System")
         st.markdown(
@@ -191,11 +186,16 @@ class StreamlitUI:
 
             if kind and kind.mime == "application/pdf":
                 if st.button("Process Document"):
-                    self.process_uploaded_file(uploaded_file)
+                    await self.process_uploaded_file(uploaded_file)
             else:
                 st.error(
                     "I must insist that you upload a proper PDF file. As my mother always says, 'If you want to do something, do it right.'"
                 )
+
+        # Check if rag_system is initialized
+        if st.session_state.rag_system is None:
+            st.warning("Initializing the RAG system, please wait...")
+            return  # Exit early if rag_system is not ready
 
         # Chat interface
         st.divider()
@@ -209,12 +209,12 @@ class StreamlitUI:
         if query := st.chat_input(
             "Ask a question (I promise to be more patient than with Penny)"
         ):
-            self.process_query(query)
+            await self.process_query(query)
 
 
-def main():
+async def main():
     ui = StreamlitUI()
-    ui.render()
+    await ui.render()  # Use await here instead of asyncio.run
 
 
 if __name__ == "__main__":

@@ -45,7 +45,7 @@ class LLMModel(ABC):
 class OllamaEmbedding(EmbeddingModel):
     """Ollama-based embedding model implementation."""
 
-    def __init__(self, model_name: str = "deepseek-r1"):
+    def __init__(self, model_name: str = "mxbai-embed-large"):
         self.model_name = model_name
         logger.info(f"Initialized OllamaEmbedding with model: {model_name}")
 
@@ -55,7 +55,10 @@ class OllamaEmbedding(EmbeddingModel):
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "http://localhost:11434/api/embeddings",
-                    json={"model": self.model_name, "prompt": text},
+                    json={
+                        "model": self.model_name,
+                        "prompt": text,
+                    },
                 )
                 result = response.json()
                 return result["embedding"]
@@ -71,7 +74,7 @@ class AwanLLM(LLMModel):
     answering questions based on the provided context documents. Your task is to:
 
     1. ALWAYS base your responses primarily on the information provided in the context
-    2. Only use your general knowledge to help understand and explain the context
+    2. Only use your general knowledge about the universe and Sheldon's personality to help understand and explain the context
     3. If the context doesn't contain relevant information, clearly state that
     4. Maintain Sheldon's personality while staying factual and precise
 
@@ -82,9 +85,9 @@ class AwanLLM(LLMModel):
        - Maintains scientific accuracy
        - Reflects Sheldon's personality
        - Cites specific parts of the context when relevant
-
-    Remember: You are a RAG system - your primary source of information should be the provided context, 
-    not your general knowledge."""
+    """
+    # Remember: You are a RAG system - your primary source of information should be the provided context,
+    # not your general knowledge.
 
     def __init__(self, model_name: str = "Meta-Llama-3-8B-Instruct"):
         self.model_name = model_name
@@ -98,29 +101,25 @@ class AwanLLM(LLMModel):
             # Construct the full prompt
             full_prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{self.SHELDON_SYSTEM_PROMPT}\n\n <|start_header_id|>user<|end_header_id|>\n\n {context if context else 'No context provided.'}\n\n <|start_header_id|>assistant<|end_header_id|>\n\n {prompt}\n\n"""
 
-            logger.info("Full prompt: %s", full_prompt)
-
             # Prepare the payload
             payload = json.dumps(
                 {
                     "model": self.model_name,
                     "prompt": full_prompt,
                     "repetition_penalty": 1.1,
-                    "temperature": 0.7,
+                    "temperature": 0.5,
                     "top_p": 0.9,
                     "top_k": 40,
                     "max_tokens": 1024,
                     "stream": True,
                 }
             )
-            logger.debug("Sending request to Awan LLM API with payload: %s", payload)
 
             # Set up headers
             headers = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key}",
             }
-            logger.debug("Sending request to Awan LLM API with headers: %s", headers)
 
             # Make the request to Awan LLM API
             response = requests.post(
@@ -130,11 +129,8 @@ class AwanLLM(LLMModel):
                 stream=True,
             )
 
-            logger.info(
-                "Received response with status code: %d | %s",
-                response.status_code,
-                response.text,
-            )
+            # Log the raw response text
+            logger.debug("Raw response from Awan LLM API: %s", response.text)
 
             if response.status_code != 200:
                 error_text = response.text
@@ -148,9 +144,20 @@ class AwanLLM(LLMModel):
             full_response = ""
             for line in response.iter_lines():
                 if line:
-                    chunk = json.loads(line)
-                    if "response" in chunk:
-                        full_response += chunk["response"]
+                    # Strip the 'data: ' prefix
+                    line = line.decode("utf-8").lstrip("data: ")
+
+                    # Skip the '[DONE]' message
+                    if line.strip() == "[DONE]":
+                        continue
+
+                    try:
+                        chunk = json.loads(line)
+                        if "choices" in chunk and len(chunk["choices"]) > 0:
+                            full_response += chunk["choices"][0]["text"]
+                    except json.JSONDecodeError as e:
+                        logger.error("Error decoding line: %s", line)
+                        logger.error("JSON decode error: %s", str(e))
 
             if not full_response:
                 logger.warning("No response received from model")
