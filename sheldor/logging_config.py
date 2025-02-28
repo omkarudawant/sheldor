@@ -13,7 +13,7 @@ def setup_logging(log_file: str = "sheldor.log") -> None:
 
     # Configure root logger
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format=log_format,
         handlers=[
             logging.FileHandler(log_dir / log_file),

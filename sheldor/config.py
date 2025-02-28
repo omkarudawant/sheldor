@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     # Model settings
     DEFAULT_LLM_MODEL: str = "llama2"
-    DEFAULT_EMBEDDING_MODEL: str = "llama2"
+    DEFAULT_EMBEDDING_MODEL: str = "mxbai-embed-large"
 
     # Vector store settings
     DEFAULT_SEARCH_K: int = 3
