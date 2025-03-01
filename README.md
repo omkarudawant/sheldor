@@ -22,11 +22,7 @@ precise, scientifically accurate responses with a touch of Sheldon's unique pers
 As Sheldon would say, "Proper preparation prevents poor performance."
 
 1. Install [Ollama](https://ollama.ai/download)
-2. Pull the DeepSeek model:
-```bash
-ollama pull deepseek-r1
-```
-3. Obtain an API key from Awan LLM and set it as an environment variable:
+2. Obtain an API key from Awan LLM and set it as an environment variable:
 ```bash
 export AWANLLM_API_KEY='your_api_key_here'
 ```
@@ -126,6 +122,36 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Awan LLM](https://awanllm.com/) for chat completion support
 - [Streamlit](https://streamlit.io/) for the UI framework
 - [PyMuPDF](https://pymupdf.readthedocs.io/) for PDF processing
+
+## Docker Usage
+
+### Building the Docker Image
+
+To build the Docker image for Sheldor, run the following command in the root directory of the project:
+
+```bash
+docker build -t sheldor .
+```
+
+### Running the Docker Container
+
+After building the image, you can run the container with the following command:
+
+```bash
+docker run -p 8501:8501 sheldor
+```
+
+This will start the Streamlit application, and you can access it at `http://localhost:8501`.
+
+### Prerequisites
+
+As Sheldon would say, "Proper preparation prevents poor performance."
+
+1. Install [Ollama](https://ollama.ai/download)
+2. Obtain an API key from Awan LLM and set it as an environment variable:
+```bash
+export AWANLLM_API_KEY='your_api_key_here'
+```
 
 ---
 ```

@@ -251,4 +251,40 @@ The system uses a hierarchical logging system:
 4. Enhanced similarity search algorithms
 5. Caching layer for improved performance
 
+## Docker Integration
+
+### Overview
+
+Sheldor can be easily deployed using Docker, which simplifies the setup process and ensures that all dependencies are correctly installed in a consistent environment.
+
+### Dockerfile
+
+The Dockerfile provided in the root of the project sets up the application environment, installs the necessary dependencies, and runs the Streamlit application. 
+
+### Data Flow with Docker
+
+1. **Building the Docker Image**:
+   - The Docker image is built using the provided Dockerfile, which installs all dependencies and sets up the environment.
+
+2. **Running the Application**:
+   - The application runs inside a Docker container, exposing the Streamlit interface on port 8501.
+
+### Benefits of Using Docker
+
+- **Consistency**: Ensures that the application runs the same way in different environments.
+- **Isolation**: Keeps the application and its dependencies isolated from the host system.
+- **Ease of Deployment**: Simplifies the deployment process, making it easier to share and run the application.
+
+### Usage
+
+To build and run the Docker container, follow the instructions in the README file under the Docker Usage section.
+
+### Prerequisites
+
+1. Install [Ollama](https://ollama.ai/download)
+2. Obtain an API key from Awan LLM and set it as an environment variable:
+```bash
+export AWANLLM_API_KEY='your_api_key_here'
+```
+
 ---
